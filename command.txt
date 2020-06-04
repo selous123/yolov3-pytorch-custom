@@ -1,0 +1,6 @@
+
+## test yolov3
+python3 test.py --cfg trained_models/yolo-v3-60e/model.cfg --data data/rubbish.data --weights trained_models/yolo-v3-60e/best.pt --batch-size 8
+
+## train yolov3-spp
+python3 train.py --cfg yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 8 --epochs 60 --save-dir yolov3-spp

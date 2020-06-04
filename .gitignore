@@ -1,0 +1,29 @@
+# large training saved file
+
+## model file
+*.h5
+*.pkl
+pre-trained_weights/
+*.pth
+
+## event file
+**/event*
+*.pt
+
+## all compressed file
+*.zip
+
+## all image file
+*.jpg
+
+## other git repo
+/code/detectron2_repo
+/code/faster-rcnn-repo
+/code/PyTorch-YOLOv3-ModelArts
+/weights
+/trained_models*
+
+
+## python tmp file
+**/.ipynb_checkpoints/
+*.pyc

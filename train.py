@@ -54,6 +54,7 @@ if f:
 if hyp['fl_gamma']:
     print('Using FocalLoss(gamma=%g)' % hyp['fl_gamma'])
 
+torch.autograd.set_detect_anomaly(True)
 
 def train(hyp):
 
@@ -141,7 +142,7 @@ def train(hyp):
             #     print(param1.shape, param2.shape)
             try:
                 #if len(model.state_dict().keys()) == len(chkpt['model'].keys()):
-                chkpt['model'] = {k: v for k,v,m in zip(model_keys, model_values, ckp_values) if m.numel()==v.numel()}
+                chkpt['model'] = {k: m for k,v,m in zip(model_keys, model_values, ckp_values) if m.numel()==v.numel()}
                 model.load_state_dict(chkpt['model'], strict=False)
             except KeyError as e:
                 s = "%s is not compatible with %s. Specify --weights '' or specify a --cfg compatible with %s. " \
@@ -259,7 +260,7 @@ def train(hyp):
 
     for epoch in range(start_epoch, epochs):  # epoch ------------------------------------------------------------------
         if len(schedulers)>1:
-            logger.info('Drop Ratio for dropblock is: %.2f' % schedulers[1].drop_prob.numpy())
+            logger.info('Drop Ratio for dropblock is: %.5f' % schedulers[1].drop_prob.numpy())
         model.train()
 
         # Update image weights (optional)
@@ -332,9 +333,10 @@ def train(hyp):
             pbar.set_description(s)
 
             # Plot
-            if ni < 10:
+            #if ni<10:
+            if epoch < 2 and i < 10:
                 #print(i)
-                f = 'train_batch%g.jpg' % i  # filename
+                f = 'train_batch%g.jpg' % ni  # filename
                 #print(imgs.shape)
                 res = plot_images(images=imgs, targets=targets, paths=paths, fname=os.path.join(opt.saveDIR, f))
                 #print(res.shape)

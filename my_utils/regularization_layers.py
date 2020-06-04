@@ -1,6 +1,7 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
+import torchvision
 
 
 class DropBlock2D(nn.Module):
@@ -32,17 +33,21 @@ class DropBlock2D(nn.Module):
         self.drop_prob = self.drop_probs[self.i]
         # print(self.drop_prob)
 
-    ## kp 线性减小 from 1 to desired value.
+    ## dp 线性减小 from 1 to desired value.
     def step(self):
-        self.i += 1;
+        self.i = self.i +  1;
         if self.i < len(self.drop_probs):
             self.drop_prob = self.drop_probs[self.i]
 
     def forward(self, x):
-        # shape: (bsize, channels, height, width)
 
+        # shape: (bsize, channels, height, width)
         assert x.dim() == 4, \
             "Expected input with 4 dimensions (bsize, channels, height, width)"
+
+        ## 在training 阶段 返回自身，求导过程 会与 inplace 操作冲突
+        ## 例如: nn.sequence([F.ReLU(inplace=True),
+        ##                  DropBlock2D(return x directly if drop_prob==0)])
 
         if not self.training:
             return x
@@ -52,12 +57,12 @@ class DropBlock2D(nn.Module):
 
             # sample mask
             mask = (torch.rand(x.shape[0], *x.shape[2:]) < gamma).float()
-
             # place mask on input device
             mask = mask.to(x.device)
 
             # compute block mask
             block_mask = self._compute_block_mask(mask)
+
             # apply block mask
             out = x * block_mask[:, None, :, :]
 

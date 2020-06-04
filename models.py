@@ -6,7 +6,9 @@ from my_utils.regularization_layers import *
 
 ONNX_EXPORT = False
 
+
 def create_modules(module_defs, img_size, cfg):
+    # flag = 1
     # Constructs module list of layer blocks from module configuration in module_defs
 
     img_size = [img_size] * 2 if isinstance(img_size, int) else img_size  # expand if necessary
@@ -124,6 +126,9 @@ def create_modules(module_defs, img_size, cfg):
             print('Warning: Unrecognized Layer Type: ' + mdef['type'])
 
         # Register module list and number of output filters
+        #if modules
+        #if(len(modules) != 0):
+
         module_list.append(modules)
         output_filters.append(filters)
 

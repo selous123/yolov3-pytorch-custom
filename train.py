@@ -54,7 +54,7 @@ if f:
 if hyp['fl_gamma']:
     print('Using FocalLoss(gamma=%g)' % hyp['fl_gamma'])
 
-torch.autograd.set_detect_anomaly(True)
+#torch.autograd.set_detect_anomaly(True)
 
 def train(hyp):
 
@@ -88,7 +88,7 @@ def train(hyp):
     img_size = imgsz_max  # initialize with max size
 
     # Configure run
-    init_seeds(seed = int(time.time()))
+    init_seeds()
     data_dict = parse_data_cfg(data)
     train_path = data_dict['train']
     test_path = data_dict['valid']

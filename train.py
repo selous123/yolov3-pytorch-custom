@@ -126,6 +126,8 @@ def train(hyp):
     start_epoch = 0
     best_fitness = 0.0
     attempt_download(weights)
+
+
     if weights.endswith('.pt'):  # pytorch format
         # possible weights are '*.pt', 'yolov3-spp.pt', 'yolov3-tiny.pt' etc.
         chkpt = torch.load(weights, map_location=device)
@@ -138,8 +140,13 @@ def train(hyp):
             model_keys = model.state_dict().keys()
             model_values = model.state_dict().values()
             ckp_values = chkpt['model'].values()
+            ckp_keys = chkpt['model'].keys()
             # for param1, param2 in zip(model_values, ckp_values):
             #     print(param1.shape, param2.shape)
+            #
+            # for k1, k2 in zip(model_keys, ckp_keys):
+            #     print(k1, k2)
+            # exit(0)
             try:
                 #if len(model.state_dict().keys()) == len(chkpt['model'].keys()):
                 chkpt['model'] = {k: m for k,v,m in zip(model_keys, model_values, ckp_values) if m.numel()==v.numel()}
@@ -307,12 +314,12 @@ def train(hyp):
             pred = model(imgs)
 
             ## Regulization L1 & L2 Loss
-            l1_reg, l2_reg = torch.tensor([0], dtype=torch.float32).to(device),
-                torch.tensor([0], dtype=torch.float32).to(device)
-            for params in model.parameters:
-                l1_reg += torch.norm(params, 1) ## L1 正则
-                l2_reg += torch.norm(params, 2) ## L2 正则
-            print('lr_reg, l2_reg:', l1_reg, l2_reg)
+            l1_reg, l2_reg = torch.tensor([0], dtype=torch.float32).to(device),\
+            torch.tensor([0], dtype=torch.float32).to(device)
+            for params in model.parameters():
+                l1_reg += torch.norm(params, 1) / params.numel() ## L1 正则
+                l2_reg += torch.norm(params, 2) / params.numel() ## L2 正则
+            #print('lr_reg, l2_reg:', l1_reg, l2_reg)
             reg_loss = opt.reg_ratio * (0.1 * l1_reg + l2_reg)
 
             ## YoLo Loss
@@ -343,7 +350,7 @@ def train(hyp):
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
             s = ('%8s' * 2 + '%8.3g' * 9) % ('%g/%g' % (epoch, epochs - 1),
-                    reg_loss.detach().cpu().numpy(), *mloss, *num_target, img_size)
+                    reg_loss.detach().cpu().numpy()[0], *mloss, *num_target, img_size)
             pbar.set_description(s)
 
             # Plot

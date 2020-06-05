@@ -474,7 +474,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             #     labels = cutout(img, labels)
 
             ## ssd augment
-            if random.random() < 0.5:
+            if random.random() < 0:
                 img, labels = ssd_augment(img, labels, self.ssd_transform)
 
         ######
@@ -518,6 +518,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         for i, l in enumerate(label):
             l[:, 0] = i  # add target image index for build_targets()
         return torch.stack(img, 0), torch.cat(label, 0), path, shapes
+
 
 def ssd_augment(img, labels, ssdaug):
     bboxs = labels[:, 1:5]

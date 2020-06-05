@@ -53,7 +53,7 @@ def create_modules(module_defs, img_size, cfg):
             elif mdef['activation'] == 'mish':
                 modules.add_module('activation', Mish())
 
-            if mdef['dropblock']:
+            if mdef.get('dropblock') is not None:
                 modules.add_module('DropBlock2D', DropBlock2D(drop_prob = float(mdef['probability']),
                     block_size = int(mdef['dropblock_size_abs']), nr_steps = int(mdef['nr_steps'])))
 
@@ -98,14 +98,17 @@ def create_modules(module_defs, img_size, cfg):
             layers = mdef['from']
             filters = output_filters[-1]
             routs.extend([i + l if l < 0 else l for l in layers])
-
+            #modules = WeightedFeatureFusion(layers=layers, weight='weights_type' in mdef)
             params = {}
-            if mdef['dropblock']:
+            drop_block = False
+            if mdef.get('dropblock') is not None:
+                drop_block = True
                 params['drop_prob'] = float(mdef['probability'])
                 params['block_size'] = int(mdef['dropblock_size_abs'])
                 params['nr_steps'] = nr_steps = int(mdef['nr_steps'])
 
-            modules = WeightedFeatureFusion(layers=layers, weight='weights_type' in mdef, mdef['dropblock'], params)
+            modules = WeightedFeatureFusion(layers=layers, weight='weights_type' in mdef,\
+            dropblock = drop_block, params = params)
 
         elif mdef['type'] == 'reorg3d':  # yolov3-spp-pan-scale
             pass

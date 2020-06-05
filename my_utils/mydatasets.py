@@ -15,6 +15,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from my_utils.utils import xyxy2xywh, xywh2xyxy
+from my_utils.augmentation import *
 
 help_url = 'https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data'
 img_formats = ['.bmp', '.jpg', '.jpeg', '.png', '.tif', '.dng']
@@ -277,6 +278,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         self.image_weights = image_weights
         self.rect = False if image_weights else rect
         self.mosaic = self.augment and not self.rect  # load 4 images at a time into a mosaic (only during training)
+        self.ssd_transform = SSDAugmentation()
 
         # Define labels
         self.label_files = [x.replace('images', 'labels').replace(os.path.splitext(x)[-1], '.txt')
@@ -471,6 +473,11 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             # if random.random() < 0.9:
             #     labels = cutout(img, labels)
 
+            ## ssd augment
+            if random.random() < 0.5:
+                img, labels = ssd_augment(img, labels, self.ssd_transform)
+
+        ######
         nL = len(labels)  # number of labels
         if nL:
             # convert xyxy to xywh
@@ -511,6 +518,14 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         for i, l in enumerate(label):
             l[:, 0] = i  # add target image index for build_targets()
         return torch.stack(img, 0), torch.cat(label, 0), path, shapes
+
+def ssd_augment(img, labels, ssdaug):
+    bboxs = labels[:, 1:5]
+    tcls = labels[:, 0]
+    img, bboxs, tcls = ssdaug(img, bboxs, tcls)
+    labels = np.hstack((np.expand_dims(tcls, axis=1), bboxs))
+    img = img.astype(np.uint8)
+    return img, labels
 
 
 def load_image(self, index, img_size=None):

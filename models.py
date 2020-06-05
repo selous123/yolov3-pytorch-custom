@@ -53,6 +53,10 @@ def create_modules(module_defs, img_size, cfg):
             elif mdef['activation'] == 'mish':
                 modules.add_module('activation', Mish())
 
+            if mdef['dropblock']:
+                modules.add_module('DropBlock2D', DropBlock2D(drop_prob = float(mdef['probability']),
+                    block_size = int(mdef['dropblock_size_abs']), nr_steps = int(mdef['nr_steps'])))
+
         elif mdef['type'] == 'BatchNorm2d':
             filters = output_filters[-1]
             modules = nn.BatchNorm2d(filters, momentum=0.03, eps=1E-4)
@@ -94,7 +98,14 @@ def create_modules(module_defs, img_size, cfg):
             layers = mdef['from']
             filters = output_filters[-1]
             routs.extend([i + l if l < 0 else l for l in layers])
-            modules = WeightedFeatureFusion(layers=layers, weight='weights_type' in mdef)
+
+            params = {}
+            if mdef['dropblock']:
+                params['drop_prob'] = float(mdef['probability'])
+                params['block_size'] = int(mdef['dropblock_size_abs'])
+                params['nr_steps'] = nr_steps = int(mdef['nr_steps'])
+
+            modules = WeightedFeatureFusion(layers=layers, weight='weights_type' in mdef, mdef['dropblock'], params)
 
         elif mdef['type'] == 'reorg3d':  # yolov3-spp-pan-scale
             pass

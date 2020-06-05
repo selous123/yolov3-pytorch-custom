@@ -270,7 +270,7 @@ def train(hyp):
             dataset.indices = random.choices(range(dataset.n), weights=image_weights, k=dataset.n)  # rand weighted idx
 
         mloss = torch.zeros(4).to(device)  # mean losses
-        print(('\n' + '%8s' * 11) % ('Epoch', 'gm', 'GIoU', 'obj', 'cls', 'total','t_s','t_m','t_l', 't_a', 'i_s'))
+        print(('\n' + '%8s' * 11) % ('Epoch', 'r_loss', 'GIoU', 'obj', 'cls', 'total','t_s','t_m','t_l', 't_a', 'i_s'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
             ni = i + nb * epoch  # number integrated batches (since train start)
@@ -306,8 +306,21 @@ def train(hyp):
             # Forward
             pred = model(imgs)
 
-            # Loss
+            ## Regulization L1 & L2 Loss
+            l1_reg, l2_reg = torch.tensor([0], dtype=torch.float32).to(device),
+                torch.tensor([0], dtype=torch.float32).to(device)
+            for params in model.parameters:
+                l1_reg += torch.norm(params, 1) ## L1 正则
+                l2_reg += torch.norm(params, 2) ## L2 正则
+            print('lr_reg, l2_reg:', l1_reg, l2_reg)
+            reg_loss = opt.reg_ratio * (0.1 * l1_reg + l2_reg)
+
+            ## YoLo Loss
             loss, loss_items = compute_loss(pred, targets, model)
+
+            ## sum Loss
+            loss = loss + reg_loss
+
             if not torch.isfinite(loss):
                 print('WARNING: non-finite loss, ending training ', loss_items)
                 return results
@@ -329,7 +342,8 @@ def train(hyp):
             # Print
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
-            s = ('%8s' * 2 + '%8.3g' * 9) % ('%g/%g' % (epoch, epochs - 1), mem, *mloss, *num_target, img_size)
+            s = ('%8s' * 2 + '%8.3g' * 9) % ('%g/%g' % (epoch, epochs - 1),
+                    reg_loss.detach().cpu().numpy(), *mloss, *num_target, img_size)
             pbar.set_description(s)
 
             # Plot
@@ -440,6 +454,7 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     parser.add_argument('--save-dir', required = True, type=str, help='directory to save')
+    parser.add_argument('--reg_ratio', type=float, default=0.0, help='reg_ratio for L1&L2 regulization to weights')
     opt = parser.parse_args()
     opt.weights = last if opt.resume else opt.weights
     #check_git_status()

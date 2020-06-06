@@ -474,7 +474,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
             #     labels = cutout(img, labels)
 
             ## ssd augment
-            if random.random() < 0:
+            if hyp['ssd_aug'] and len(labels) > 0 and random.random() < 0.5:
                 img, labels = ssd_augment(img, labels, self.ssd_transform)
 
         ######

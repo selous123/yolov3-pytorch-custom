@@ -75,6 +75,10 @@ def train(hyp):
     weights = opt.weights  # initial training weights
     imgsz_min, imgsz_max, imgsz_test = opt.img_size  # img sizes (min, max, test)
 
+    hyp['ssd_aug'] = opt.ssd_aug
+    if hyp['ssd_aug']:
+        logger.info('use ssd augmentation for data')
+
     # Image Sizes
     gs = 64  # (pixels) grid size
     assert math.fmod(imgsz_min, gs) == 0, '--img-size %g must be a %g-multiple' % (imgsz_min, gs)
@@ -462,6 +466,7 @@ if __name__ == '__main__':
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     parser.add_argument('--save-dir', required = True, type=str, help='directory to save')
     parser.add_argument('--reg-ratio', type=float, default=0.0, help='reg_ratio for L1&L2 regulization to weights')
+    parser.add_argument('--ssd-aug', action='store_true', help='use ssd augmentation or not')
     opt = parser.parse_args()
     opt.weights = last if opt.resume else opt.weights
     #check_git_status()

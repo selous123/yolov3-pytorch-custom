@@ -461,7 +461,7 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', help='use adam optimizer')
     parser.add_argument('--single-cls', action='store_true', help='train as single-class dataset')
     parser.add_argument('--save-dir', required = True, type=str, help='directory to save')
-    parser.add_argument('--reg_ratio', type=float, default=0.0, help='reg_ratio for L1&L2 regulization to weights')
+    parser.add_argument('--reg-ratio', type=float, default=0.0, help='reg_ratio for L1&L2 regulization to weights')
     opt = parser.parse_args()
     opt.weights = last if opt.resume else opt.weights
     #check_git_status()

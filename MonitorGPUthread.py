@@ -8,6 +8,9 @@ commands = []
 command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-ldb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-dropblock3'
 commands.append(command1)
 
+command2 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-sdd-aug --ssd-aug'
+commands.append(command2)
+
 command_idx = 0
 
 

@@ -5,7 +5,7 @@ import sys
 
 commands = []
 
-command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-1.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save yolov3-spp-OA'
+command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-ldb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-dropblock3'
 commands.append(command1)
 
 command_idx = 0
@@ -28,7 +28,7 @@ while(True):
         print ("Waiting GPU Free...")
         print (time.strftime("%F") + ' ' +  time.strftime("%T"))
         print ('====================================================')
-        time.sleep(1 * 60 * 30)
+        time.sleep(1 * 60 * 10)
 
     except IndexError:
         break

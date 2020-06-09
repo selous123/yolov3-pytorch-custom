@@ -383,7 +383,7 @@ def compute_loss(p, targets, model):  # predictions, targets, model
     tcls, tbox, indices, anchors = build_targets(p, targets, model)  # targets
     h = model.hyp  # hyperparameters
     red = 'mean'  # Loss reduction (sum or mean)
-
+    w_iou = h['lbox_weight']
     # Define criteria
     BCEcls = nn.BCEWithLogitsLoss(pos_weight=ft([h['cls_pw']]), reduction=red)
     BCEobj = nn.BCEWithLogitsLoss(pos_weight=ft([h['obj_pw']]), reduction=red)
@@ -411,7 +411,16 @@ def compute_loss(p, targets, model):  # predictions, targets, model
             pwh = torch.exp(ps[:, 2:4]).clamp(max=1E3) * anchors[i]
             pbox = torch.cat((pxy, pwh), 1)  # predicted box
             giou = bbox_iou(pbox.t(), tbox[i], x1y1x2y2=False, GIoU=True)  # giou(prediction, target)
-            lbox += (1.0 - giou).sum() if red == 'sum' else (1.0 - giou).mean()  # giou loss
+            r_giou = 1 - giou
+
+            if w_iou:
+                ## 计算 wh => [0, 1]
+                norm_wh = tbox[i][:, 2:] / torch.tensor(p[i].shape, device = tbox[i].device)[[3,2]].float()
+                ## 计算 weight (1 - w * h)**2
+                weight_iou = (1 - norm_wh[:, 0] * norm_wh[:, 1]) ** 2
+                r_giou = weight_iou * r_giou
+
+            lbox += r_giou.sum() if red == 'sum' else r_giou.mean()  # giou loss
 
             # Obj
             tobj[b, a, gj, gi] = (1.0 - model.gr) + model.gr * giou.detach().clamp(0).type(tobj.dtype)  # giou ratio

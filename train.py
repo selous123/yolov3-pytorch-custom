@@ -79,6 +79,13 @@ def train(hyp):
     if hyp['ssd_aug']:
         logger.info('use ssd augmentation for data')
 
+    hyp['smooth'] = 0
+    if hyp['smooth']:
+        logger.info('label smooth with weights: 0.1')
+
+    if opt.image_weights:
+        logger.info('use image weights based on the mAP values.')
+
     # Image Sizes
     gs = 64  # (pixels) grid size
     assert math.fmod(imgsz_min, gs) == 0, '--img-size %g must be a %g-multiple' % (imgsz_min, gs)
@@ -223,6 +230,7 @@ def train(hyp):
                                   augment=True,
                                   hyp=hyp,  # augmentation hyperparameters
                                   rect=opt.rect,  # rectangular training
+                                  image_weights = opt.image_weights,
                                   cache_images=opt.cache_images,
                                   single_cls=opt.single_cls)
 
@@ -328,7 +336,6 @@ def train(hyp):
 
             ## YoLo Loss
             loss, loss_items = compute_loss(pred, targets, model)
-
             ## sum Loss
             loss = loss + reg_loss
 
@@ -467,6 +474,7 @@ if __name__ == '__main__':
     parser.add_argument('--save-dir', required = True, type=str, help='directory to save')
     parser.add_argument('--reg-ratio', type=float, default=0.0, help='reg_ratio for L1&L2 regulization to weights')
     parser.add_argument('--ssd-aug', action='store_true', help='use ssd augmentation or not')
+    parser.add_argument('--image-weights', action='store_true', help='use image_weights or not')
     opt = parser.parse_args()
     opt.weights = last if opt.resume else opt.weights
     #check_git_status()

@@ -15,7 +15,7 @@ pre-trained_weights/
 
 ## all image file
 *.jpg
-
+*.png
 ## other git repo
 /code/detectron2_repo
 /code/faster-rcnn-repo

@@ -379,6 +379,7 @@ def smooth_BCE(eps=0.1):  # https://github.com/ultralytics/yolov3/issues/238#iss
 def compute_loss(p, targets, model):  # predictions, targets, model
     ft = torch.cuda.FloatTensor if p[0].is_cuda else torch.Tensor
     lcls, lbox, lobj = ft([0]), ft([0]), ft([0])
+
     tcls, tbox, indices, anchors = build_targets(p, targets, model)  # targets
     h = model.hyp  # hyperparameters
     red = 'mean'  # Loss reduction (sum or mean)
@@ -388,7 +389,7 @@ def compute_loss(p, targets, model):  # predictions, targets, model
     BCEobj = nn.BCEWithLogitsLoss(pos_weight=ft([h['obj_pw']]), reduction=red)
 
     # class label smoothing https://arxiv.org/pdf/1902.04103.pdf eqn 3
-    cp, cn = smooth_BCE(eps=0.0)
+    cp, cn = smooth_BCE(eps=h['smooth'])
 
     # focal loss
     g = h['fl_gamma']  # focal loss gamma
@@ -400,7 +401,6 @@ def compute_loss(p, targets, model):  # predictions, targets, model
     for i, pi in enumerate(p):  # layer index, layer predictions
         b, a, gj, gi = indices[i]  # image, anchor, gridy, gridx
         tobj = torch.zeros_like(pi[..., 0])  # target obj
-
         nb = b.shape[0]  # number of targets
         if nb:
             nt += nb  # cumulative targets
@@ -452,21 +452,22 @@ def build_targets(p, targets, model):
 
     style = None
     multi_gpu = type(model) in (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel)
+
     for i, j in enumerate(model.yolo_layers):
         # get number of grid points and anchor vec for this yolo layer
         anchors = model.module.module_list[j].anchor_vec if multi_gpu else model.module_list[j].anchor_vec
         gain[2:] = torch.tensor(p[i].shape)[[3, 2, 3, 2]]  # xyxy gain
+        #print(anchors)
+
         na = anchors.shape[0]  # number of anchors
         at = torch.arange(na).view(na, 1).repeat(1, nt)  # anchor tensor, same as .repeat_interleave(nt)
-
-        # Match targets to anchors
+        # Match targets to anchors => with same
         a, t, offsets = [], targets * gain, 0
         if nt:
             # r = t[None, :, 4:6] / anchors[:, None]  # wh ratio
             # j = torch.max(r, 1. / r).max(2)[0] < model.hyp['anchor_t']  # compare
             j = wh_iou(anchors, t[:, 4:6]) > model.hyp['iou_t']  # iou(3,n) = wh_iou(anchors(3,2), gwh(n,2))
             a, t = at[j], t.repeat(na, 1, 1)[j]  # filter
-
             # overlaps
             gxy = t[:, 2:4]  # grid xy
             z = torch.zeros_like(gxy)
@@ -499,7 +500,6 @@ def build_targets(p, targets, model):
             assert c.max() < model.nc, 'Model accepts %g classes labeled from 0-%g, however you labelled a class %g. ' \
                                        'See https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data' % (
                                            model.nc, model.nc - 1, c.max())
-
     return tcls, tbox, indices, anch
 
 

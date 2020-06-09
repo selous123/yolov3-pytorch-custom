@@ -5,11 +5,12 @@ import sys
 
 commands = []
 
-command0 = 'python3 train.py --cfg cfg/yolov3-spp-44-db.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-dropblock1'
-commands.append(command0)
 
 command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-pdb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-paddledb'
 commands.append(command1)
+
+command0 = 'python3 train.py --cfg cfg/yolov3-spp-44-db.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-dropblock1'
+commands.append(command0)
 
 command2 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-resample --image-weights'
 commands.append(command2)

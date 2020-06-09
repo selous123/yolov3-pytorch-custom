@@ -79,12 +79,16 @@ def train(hyp):
     if hyp['ssd_aug']:
         logger.info('use ssd augmentation for data')
 
-    hyp['smooth'] = 0
+    hyp['smooth'] = opt.smooth_ratio
     if hyp['smooth']:
         logger.info('label smooth with weights: 0.1')
 
     if opt.image_weights:
         logger.info('use image weights based on the mAP values.')
+
+    hyp['lbox_weight'] = opt.lbox_weight
+    if hyp['lbox_weight']:
+        logger.info('reweight lbox by (1 - w * h) ** 2')
 
     # Image Sizes
     gs = 64  # (pixels) grid size
@@ -338,7 +342,6 @@ def train(hyp):
             loss, loss_items = compute_loss(pred, targets, model)
             ## sum Loss
             loss = loss + reg_loss
-
             if not torch.isfinite(loss):
                 print('WARNING: non-finite loss, ending training ', loss_items)
                 return results
@@ -475,6 +478,8 @@ if __name__ == '__main__':
     parser.add_argument('--reg-ratio', type=float, default=0.0, help='reg_ratio for L1&L2 regulization to weights')
     parser.add_argument('--ssd-aug', action='store_true', help='use ssd augmentation or not')
     parser.add_argument('--image-weights', action='store_true', help='use image_weights or not')
+    parser.add_argument('--smooth-ratio', type=float, default=0.0, help='label smooth ratio for cls bceloss')
+    parser.add_argument('--lbox-weight', action='store_true', help='weight box loss by size of gt-box or not')
     opt = parser.parse_args()
     opt.weights = last if opt.resume else opt.weights
     #check_git_status()

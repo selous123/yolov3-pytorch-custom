@@ -437,9 +437,9 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 ## 选择 stitcher
                 img, labels = load_stitcher(self, index)
                 shapes  = None
-            elif self.augment and (random.random()<0.5):
-                img, labels = load_mixup(self, index)
-                shapes = None
+            # elif self.augment and (random.random()<0.5):
+            #     img, labels = load_mixup(self, index)
+            #     shapes = None
             else:
                 # Load image
                 img, (h0, w0), (h, w) = load_image(self, index)

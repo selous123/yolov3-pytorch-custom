@@ -5,11 +5,17 @@ import sys
 
 commands = []
 
-command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-ldb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-dropblock3'
+command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-pdb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-paddledb'
 commands.append(command1)
 
-command2 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-sdd-aug --ssd-aug'
+command2 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-resample --image-weights'
 commands.append(command2)
+
+command3 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-lsmooth --smooth-ratio 0.1'
+commdands.append(command3)
+
+command4 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-lbox --lbox-weight'
+commdands.append(command4)
 
 command_idx = 0
 

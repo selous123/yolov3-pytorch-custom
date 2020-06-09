@@ -437,7 +437,7 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
                 ## 选择 stitcher
                 img, labels = load_stitcher(self, index)
                 shapes  = None
-            elif self.augment:
+            elif self.augment and (random.random()<0.5):
                 img, labels = load_mixup(self, index)
                 shapes = None
             else:
@@ -577,7 +577,7 @@ def load_mixup(self, index):
     shape = self.img_size
     indices = [index] + [random.randint(0, len(self.labels) - 1)]
     img2 = np.full((shape, shape, 3), 0, dtype = np.uint8)
-    coffi = [0.6, 0.4]
+    coffi = [0.5, 0.5]
     for i, index in enumerate(indices):
         img, (h0, w0), (h, w)  = load_image(self, index, shape)
         img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)

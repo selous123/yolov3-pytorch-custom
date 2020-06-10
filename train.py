@@ -11,7 +11,6 @@ from torch.utils.tensorboard import SummaryWriter
 import test  # import test.py to get mAP after each epoch
 from models import *
 from my_utils.mydatasets import *
-from my_utils.utils import *
 from my_utils.regularization_layers import *
 import logging
 
@@ -41,7 +40,8 @@ hyp = {'giou': 3.54,  # giou loss gain
        'degrees': 1.98 * 0,  # image rotation (+/- deg)
        'translate': 0.05 * 0,  # image translation (+/- fraction)
        'scale': 0.05 * 0,  # image scale (+/- gain)
-       'shear': 0.641 * 0}  # image shear (+/- deg)
+       'shear': 0.641 * 0,
+       'original_loss': False}  # image shear (+/- deg)
 
 # Overwrite hyp with hyp*.txt (optional)
 f = glob.glob('hyp*.txt')
@@ -56,8 +56,12 @@ if hyp['fl_gamma']:
 
 #torch.autograd.set_detect_anomaly(True)
 
-def train(hyp):
+if hyp['original_loss']:
+    from my_utils.mutils import *
+else:
+    from my_utils.utils import *
 
+def train(hyp):
     ## get logger
     logger = logging.getLogger('yolo3.train')
 
@@ -77,19 +81,23 @@ def train(hyp):
 
     hyp['ssd_aug'] = opt.ssd_aug
     if hyp['ssd_aug']:
-        logger.info('use ssd augmentation for data')
+        logger.info('Using ssd augmentation for data')
 
     hyp['smooth'] = opt.smooth_ratio
     if hyp['smooth']:
-        logger.info('label smooth with weights: 0.1')
+        logger.info('Labeling smooth with weights: 0.1')
 
     if opt.image_weights:
-        logger.info('use image weights based on the mAP values.')
+        logger.info('Using image weights based on the mAP values.')
 
     hyp['lbox_weight'] = opt.lbox_weight
     if hyp['lbox_weight']:
-        logger.info('reweight lbox by (1 - w * h) ** 2')
+        logger.info('Reweight lbox by (1 - w * h) ** 2')
 
+    if hyp['original_loss']:
+        logger.info('Using original loss presented in yolov3 paper')
+    else:
+        logger.info('Using loss present in git repo: ultralytics/yolov3')
     # Image Sizes
     gs = 64  # (pixels) grid size
     assert math.fmod(imgsz_min, gs) == 0, '--img-size %g must be a %g-multiple' % (imgsz_min, gs)
@@ -309,6 +317,7 @@ def train(hyp):
             if ni <= n_burn:
                 xi = [0, n_burn]  # x interp
                 model.gr = np.interp(ni, xi, [0.0, 1.0])  # giou loss ratio (obj_loss = 1.0 or giou)
+                # model.gr = 0
                 accumulate = max(1, np.interp(ni, xi, [1, 64 / batch_size]).round())
                 for j, x in enumerate(optimizer.param_groups):
                     # bias lr falls from 0.1 to lr0, all other lrs rise from 0.0 to lr0

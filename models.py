@@ -173,7 +173,7 @@ class YOLOLayer(nn.Module):
 
     def create_grids(self, ng=(13, 13), device='cpu'):
         self.nx, self.ny = ng  # x and y grid size
-        self.ng = torch.tensor(ng, dtype=torch.float)
+        self.ng = torch.tensor(ng, dtype=torch.float).to(device)
 
         # build xy offsets
         if not self.training:
@@ -256,6 +256,7 @@ class Darknet(nn.Module):
         self.version = np.array([0, 2, 5], dtype=np.int32)  # (int32) version info: major, minor, revision
         self.seen = np.array([0], dtype=np.int64)  # (int64) number of images seen during training
         self.info(verbose) if not ONNX_EXPORT else None  # print model description
+        self.arc = ['default']
 
     def forward(self, x, augment=False, verbose=False):
 

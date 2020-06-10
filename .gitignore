@@ -9,7 +9,8 @@ pre-trained_weights/
 ## event file
 **/event*
 *.pt
-
+*.npz
+*.json
 ## all compressed file
 *.zip
 

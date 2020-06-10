@@ -396,6 +396,7 @@ def compute_loss(p, targets, model):  # predictions, targets, model
     if g > 0:
         BCEcls, BCEobj = FocalLoss(BCEcls, g), FocalLoss(BCEobj, g)
 
+    # BCEobj = FocalLoss(BCEobj, 1.5)
     # per output
     nt = 0  # targets
     for i, pi in enumerate(p):  # layer index, layer predictions
@@ -423,7 +424,10 @@ def compute_loss(p, targets, model):  # predictions, targets, model
             lbox += r_giou.sum() if red == 'sum' else r_giou.mean()  # giou loss
 
             # Obj
+            # print(model.gr)
+            # print(giou.shape)
             tobj[b, a, gj, gi] = (1.0 - model.gr) + model.gr * giou.detach().clamp(0).type(tobj.dtype)  # giou ratio
+            # tobj[b, a, gj, gi] = 1.0
 
             # Class
             if model.nc > 1:  # cls loss (only if multiple classes)

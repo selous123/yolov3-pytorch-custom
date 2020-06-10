@@ -417,48 +417,49 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         hyp = self.hyp
 
         # 随机启用 mosaic
-        if self.augment and random.random()<0.4:
+        if self.augment and random.random()<0.5:
+        #if self.augment and random.random()<0.4:
             self.mosaic = True
         else:
             self.mosaic = False
 
         if self.mosaic:
             # Load mosaic
-            # if random.random()<0.5:
-            #     img, labels = load_mosaic(self, index)
-            # else:
-            #     img, labels = load_stitcher(self, index)
-            img, labels = load_mosaic(self, index)
-            shapes = None
-
-        else:
-            ## 随机选择 stitcher or Load Image
-            if self.augment and (random.random()<0.5):
-                ## 选择 stitcher
-                img, labels = load_stitcher(self, index)
-                shapes  = None
-            # elif self.augment and (random.random()<0.5):
-            #     img, labels = load_mixup(self, index)
-            #     shapes = None
+            ## 随机选择 mosaic or stitcher
+            if random.random()<0.5:
+                img, labels = load_mosaic(self, index)
             else:
-                # Load image
-                img, (h0, w0), (h, w) = load_image(self, index)
+                img, labels = load_stitcher(self, index)
+            # img, labels = load_mosaic(self, index)
+            shapes = None
+        else:
+            # ## 随机选择 stitcher or Load Image
+            # if self.augment and (random.random()<0.5):
+            #     ## 选择 stitcher
+            #     img, labels = load_stitcher(self, index)
+            #     shapes  = None
+            # # elif self.augment and (random.random()<0.5):
+            # #     img, labels = load_mixup(self, index)
+            # #     shapes = None
+            # else:
+            # Load image
+            img, (h0, w0), (h, w) = load_image(self, index)
 
-                # Letterbox
-                shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
-                img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
-                shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
+            # Letterbox
+            shape = self.batch_shapes[self.batch[index]] if self.rect else self.img_size  # final letterboxed shape
+            img, ratio, pad = letterbox(img, shape, auto=False, scaleup=self.augment)
+            shapes = (h0, w0), ((h / h0, w / w0), pad)  # for COCO mAP rescaling
 
-                # Load labels
-                labels = []
-                x = self.labels[index]
-                if x.size > 0:
-                    # Normalized xywh to pixel xyxy format
-                    labels = x.copy()
-                    labels[:, 1] = ratio[0] * w * (x[:, 1] - x[:, 3] / 2) + pad[0]  # pad width
-                    labels[:, 2] = ratio[1] * h * (x[:, 2] - x[:, 4] / 2) + pad[1]  # pad height
-                    labels[:, 3] = ratio[0] * w * (x[:, 1] + x[:, 3] / 2) + pad[0]
-                    labels[:, 4] = ratio[1] * h * (x[:, 2] + x[:, 4] / 2) + pad[1]
+            # Load labels
+            labels = []
+            x = self.labels[index]
+            if x.size > 0:
+                # Normalized xywh to pixel xyxy format
+                labels = x.copy()
+                labels[:, 1] = ratio[0] * w * (x[:, 1] - x[:, 3] / 2) + pad[0]  # pad width
+                labels[:, 2] = ratio[1] * h * (x[:, 2] - x[:, 4] / 2) + pad[1]  # pad height
+                labels[:, 3] = ratio[0] * w * (x[:, 1] + x[:, 3] / 2) + pad[0]
+                labels[:, 4] = ratio[1] * h * (x[:, 2] + x[:, 4] / 2) + pad[1]
 
         if self.augment:
             # Augment imagespace

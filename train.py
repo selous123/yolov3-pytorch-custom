@@ -104,7 +104,7 @@ def train(hyp):
 
     hyp['lbox_weight'] = opt.lbox_weight
     if hyp['lbox_weight']:
-        logger.info('Reweight lbox by (1 - w * h) ** 2')
+        logger.info('Reweight by (2 - w * h)')
 
     if hyp['original_loss']:
         logger.info('Using original loss presented in yolov3 paper')
@@ -123,7 +123,7 @@ def train(hyp):
     img_size = imgsz_max  # initialize with max size
 
     # Configure run
-    utils.init_seeds()
+    utils.init_seeds(seed=int(time.time()))
     data_dict = parse_config.parse_data_cfg(data)
     train_path = data_dict['train']
     test_path = data_dict['valid']
@@ -138,8 +138,7 @@ def train(hyp):
     model = models.Darknet(cfg).to(device)
 
     #print(model)
-    _ = model(torch.zeros((1, 3, 512, 512), device=device)) if device.type != 'cpu' else None  # run once
-    exit(0)
+    #_ = model(torch.zeros((1, 3, 512, 512), device=device)) if device.type != 'cpu' else None  # run once
 
     # Optimizer
     pg0, pg1, pg2 = [], [], []  # optimizer parameter groups
@@ -317,7 +316,7 @@ def train(hyp):
             dataset.indices = random.choices(range(dataset.n), weights=image_weights, k=dataset.n)  # rand weighted idx
 
         mloss = torch.zeros(4).to(device)  # mean losses
-        print(('\n' + '%8s' * 11) % ('Epoch', 'r_loss', 'GIoU', 'obj', 'cls', 'total','t_s','t_m','t_l', 't_a', 'i_s'))
+        print(('\n' + '%8s' * 11) % ('Epoch', 'gm', 'GIoU', 'obj', 'cls', 'total','t_s','t_m','t_l', 't_a', 'i_s'))
         pbar = tqdm(enumerate(dataloader), total=nb)  # progress bar
         for i, (imgs, targets, paths, _) in pbar:  # batch -------------------------------------------------------------
             ni = i + nb * epoch  # number integrated batches (since train start)
@@ -388,8 +387,8 @@ def train(hyp):
             # Print
             mloss = (mloss * i + loss_items) / (i + 1)  # update mean losses
             mem = '%.3gG' % (torch.cuda.memory_cached() / 1E9 if torch.cuda.is_available() else 0)  # (GB)
-            s = ('%8s' * 2 + '%8.3g' * 9) % ('%g/%g' % (epoch, epochs - 1),
-                    reg_loss.detach().cpu().numpy()[0], *mloss, *num_target, img_size)
+            s = ('%8s' * 2 + '%8.3g' * 9) % ('%g/%g' % (epoch, epochs - 1), mem, *mloss, *num_target, img_size)
+            #reg_loss.detach().cpu().numpy()[0]
             pbar.set_description(s)
 
             # Plot
@@ -456,7 +455,6 @@ def train(hyp):
             if (best_fitness == fi) and not final_epoch:
                 torch.save(chkpt, best)
             del chkpt
-
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training
 

@@ -1,0 +1,4 @@
+classes= 44
+train=/store/dataset/rubbish_yolo/trainval+coco1000.txt
+valid=/store/dataset/rubbish_yolo/valid.txt
+names=/store/dataset/rubbish_yolo/classes.names

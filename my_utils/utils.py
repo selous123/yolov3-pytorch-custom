@@ -32,6 +32,7 @@ matplotlib.rc('font', **{'size': 11})
 # Prevent OpenCV from multithreading (to use PyTorch DataLoader)
 cv2.setNumThreads(0)
 
+
 def select_with_size(*args, size_label='small', input_format='xyxy'):
 
     targets = args[0]
@@ -418,7 +419,9 @@ def compute_loss(p, targets, model):  # predictions, targets, model
                 ## 计算 wh => [0, 1]
                 norm_wh = tbox[i][:, 2:] / torch.tensor(p[i].shape, device = tbox[i].device)[[3,2]].float()
                 ## 计算 weight (1 - w * h)**2
-                weight_iou = (1 - norm_wh[:, 0] * norm_wh[:, 1]) ** 2
+                # weight_iou = (1 - norm_wh[:, 0] * norm_wh[:, 1]) ** 2
+                ## 计算 weight (2 - w * h)
+                weight_iou = (2 - norm_wh[:, 0] * norm_wh[:, 1])
                 r_giou = weight_iou * r_giou
 
             lbox += r_giou.sum() if red == 'sum' else r_giou.mean()  # giou loss

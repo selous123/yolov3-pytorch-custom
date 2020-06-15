@@ -6,20 +6,32 @@ import sys
 commands = []
 
 
-command2 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-resample --image-weights'
-commands.append(command2)
+# command2 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-resample --image-weights'
+# commands.append(command2)
+#
+# command0 = 'python3 train.py --cfg cfg/yolov3-spp-44-db.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-dropblock1'
+# commands.append(command0)
+#
+# command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-pdb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-paddledb'
+# commands.append(command1)
+#
+# command3 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-lsmooth --smooth-ratio 0.1'
+# commands.append(command3)
+#
+# command4 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-lbox --lbox-weight'
+# commands.append(command4)
 
-command0 = 'python3 train.py --cfg cfg/yolov3-spp-44-db.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-dropblock1'
+command0 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish_coco.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --lbox-weight --save baseline-coco'
 commands.append(command0)
 
-command1 = 'python3 train.py --cfg cfg/yolov3-spp-44-pdb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-paddledb'
+command1 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish_all.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-all --lbox-weight --notest'
 commands.append(command1)
 
-command3 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-lsmooth --smooth-ratio 0.1'
-commands.append(command3)
+command2 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish_all_coco.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-all_coco --lbox-weight --notest'
+commands.append(command2)
 
-command4 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-lbox --lbox-weight'
-commands.append(command4)
+command3 = 'python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish_all_coco.data --weights weights/yolov3-sppu.pt --batch-size 16 --epochs 120 --save baseline-all_coco-nolbox --notest'
+commands.append(command3)
 
 command_idx = 0
 

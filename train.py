@@ -138,8 +138,7 @@ def train(hyp):
     model = models.Darknet(cfg).to(device)
 
     #print(model)
-    _ = model(torch.zeros((1, 3, 512, 512), device=device)) if device.type != 'cpu' else None  # run once
-    exit(0)
+    #_ = model(torch.zeros((1, 3, 512, 512), device=device)) if device.type != 'cpu' else None  # run once
 
     # Optimizer
     pg0, pg1, pg2 = [], [], []  # optimizer parameter groups
@@ -456,7 +455,6 @@ def train(hyp):
             if (best_fitness == fi) and not final_epoch:
                 torch.save(chkpt, best)
             del chkpt
-
         # end epoch ----------------------------------------------------------------------------------------------------
     # end training
 

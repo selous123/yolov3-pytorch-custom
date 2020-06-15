@@ -2,17 +2,29 @@ import argparse
 
 ## command:
 ## python3 train.py --cfg yolov3-44.cfg --data data/rubbish.data --weights weights/yolov3.weights --batch-size 8 --epochs 60
+import glob
+import os
+import shutil
+import math
+import random
+import numpy as np
+import time
+from tqdm import tqdm
 
+import torch
 import torch.distributed as dist
 import torch.optim as optim
 import torch.optim.lr_scheduler as lr_scheduler
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn.functional as F
 
 import test  # import test.py to get mAP after each epoch
-from models import *
-from my_utils.mydatasets import *
-from my_utils.regularization_layers import *
+import models as models
+import my_utils.mydatasets as mydatasets
+import my_utils.regularization_layers as regularization_layers
 import logging
+from my_utils import torch_utils
+from my_utils import parse_config
 
 mixed_precision = True
 try:  # Mixed precision training https://github.com/NVIDIA/apex
@@ -57,9 +69,9 @@ if hyp['fl_gamma']:
 #torch.autograd.set_detect_anomaly(True)
 
 if hyp['original_loss']:
-    from my_utils.mutils import *
+    import my_utils.mutils as utils
 else:
-    from my_utils.utils import *
+    import my_utils.utils as utils
 
 def train(hyp):
     ## get logger
@@ -111,8 +123,8 @@ def train(hyp):
     img_size = imgsz_max  # initialize with max size
 
     # Configure run
-    init_seeds()
-    data_dict = parse_data_cfg(data)
+    utils.init_seeds()
+    data_dict = parse_config.parse_data_cfg(data)
     train_path = data_dict['train']
     test_path = data_dict['valid']
     nc = 1 if opt.single_cls else int(data_dict['classes'])  # number of classes
@@ -123,7 +135,11 @@ def train(hyp):
         os.remove(f)
 
     # Initialize model
-    model = Darknet(cfg).to(device)
+    model = models.Darknet(cfg).to(device)
+
+    #print(model)
+    _ = model(torch.zeros((1, 3, 512, 512), device=device)) if device.type != 'cpu' else None  # run once
+    exit(0)
 
     # Optimizer
     pg0, pg1, pg2 = [], [], []  # optimizer parameter groups
@@ -148,7 +164,7 @@ def train(hyp):
 
     start_epoch = 0
     best_fitness = 0.0
-    attempt_download(weights)
+    models.attempt_download(weights)
 
 
     if weights.endswith('.pt'):  # pytorch format
@@ -215,7 +231,7 @@ def train(hyp):
     schedulers.append(scheduler)
     # 把所有的 DropBlock2D 层加入到scheduler中
     for layer in model.modules():
-        if isinstance(layer, DropBlock2D):
+        if isinstance(layer, regularization_layers.DropBlock2D):
             schedulers.append(layer)
     # Plot lr schedule
     # y = []
@@ -238,7 +254,7 @@ def train(hyp):
         model.yolo_layers = model.module.yolo_layers  # move yolo layer indices to top level
 
     # Dataset
-    dataset = LoadImagesAndLabels(train_path, img_size, batch_size,
+    dataset = mydatasets.LoadImagesAndLabels(train_path, img_size, batch_size,
                                   augment=True,
                                   hyp=hyp,  # augmentation hyperparameters
                                   rect=opt.rect,  # rectangular training
@@ -258,7 +274,7 @@ def train(hyp):
 
     # Testloader
     test_batch_size = 8
-    testloader = torch.utils.data.DataLoader(LoadImagesAndLabels(test_path, imgsz_test, test_batch_size,
+    testloader = torch.utils.data.DataLoader(mydatasets.LoadImagesAndLabels(test_path, imgsz_test, test_batch_size,
                                                                  hyp=hyp,
                                                                  rect=True,
                                                                  cache_images=opt.cache_images,
@@ -272,7 +288,7 @@ def train(hyp):
     model.nc = nc  # attach number of classes to model
     model.hyp = hyp  # attach hyperparameters to model
     model.gr = 1.0  # giou loss ratio (obj_loss = 1.0 or giou)
-    model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device)  # attach class weights
+    model.class_weights = utils.labels_to_class_weights(dataset.labels, nc).to(device)  # attach class weights
 
     # Model EMA
     ema = torch_utils.ModelEMA(model)
@@ -297,7 +313,7 @@ def train(hyp):
         # Update image weights (optional)
         if dataset.image_weights:
             w = model.class_weights.cpu().numpy() * (1 - maps) ** 2  # class weights
-            image_weights = labels_to_image_weights(dataset.labels, nc=nc, class_weights=w)
+            image_weights = utils.labels_to_image_weights(dataset.labels, nc=nc, class_weights=w)
             dataset.indices = random.choices(range(dataset.n), weights=image_weights, k=dataset.n)  # rand weighted idx
 
         mloss = torch.zeros(4).to(device)  # mean losses
@@ -309,7 +325,7 @@ def train(hyp):
             targets = targets.to(device)
 
             for index, size_level in enumerate(size_levels):
-                target_temp = select_with_size(targets[:, 2:].cpu(), size_label=size_level, input_format='xywh')[0]
+                target_temp = utils.select_with_size(targets[:, 2:].cpu(), size_label=size_level, input_format='xywh')[0]
                 num_target[index] = len(target_temp)
                 #print(size_level, ':', len(target_temp))
 
@@ -348,7 +364,7 @@ def train(hyp):
             reg_loss = opt.reg_ratio * (0.1 * l1_reg + l2_reg)
 
             ## YoLo Loss
-            loss, loss_items = compute_loss(pred, targets, model)
+            loss, loss_items = utils.compute_loss(pred, targets, model)
             ## sum Loss
             loss = loss + reg_loss
             if not torch.isfinite(loss):
@@ -382,7 +398,7 @@ def train(hyp):
                 #print(i)
                 f = 'train_batch%g.jpg' % ni  # filename
                 #print(imgs.shape)
-                res = plot_images(images=imgs, targets=targets, paths=paths, fname=os.path.join(opt.saveDIR, f))
+                res = utils.plot_images(images=imgs, targets=targets, paths=paths, fname=os.path.join(opt.saveDIR, f))
                 #print(res.shape)
                 if tb_writer:
                     tb_writer.add_image(f, res, dataformats='HWC', global_step=epoch)
@@ -421,7 +437,7 @@ def train(hyp):
                 tb_writer.add_scalar(tag, x, epoch)
 
         # Update best mAP
-        fi = fitness(np.array(results).reshape(1, -1))  # fitness_i = weighted combination of [P, R, mAP, F1]
+        fi = utils.fitness(np.array(results).reshape(1, -1))  # fitness_i = weighted combination of [P, R, mAP, F1]
         if fi > best_fitness:
             best_fitness = fi
 
@@ -452,11 +468,11 @@ def train(hyp):
             if os.path.exists(f1):
                 os.rename(f1, f2)  # rename
                 ispt = f2.endswith('.pt')  # is *.pt
-                strip_optimizer(f2) if ispt else None  # strip optimizer
+                utils.strip_optimizer(f2) if ispt else None  # strip optimizer
                 os.system('gsutil cp %s gs://%s/weights' % (f2, opt.bucket)) if opt.bucket and ispt else None  # upload
 
     if not opt.evolve:
-        plot_results(path=opt.saveDIR)  # save as results.png
+        utils.plot_results(path=opt.saveDIR)  # save as results.png
     logger.info('%g epochs completed in %.3f hours.\n' % (epoch - start_epoch + 1, (time.time() - t0) / 3600))
     dist.destroy_process_group() if torch.cuda.device_count() > 1 else None
     torch.cuda.empty_cache()
@@ -507,7 +523,7 @@ if __name__ == '__main__':
     os.makedirs(opt.saveDIR, exist_ok=True)
 
     ## setup_logger
-    logger = setup_logger(output = opt.saveDIR)
+    logger = utils.setup_logger(output = opt.saveDIR)
     logger.info(opt)
     logger.info('Saved Directory:{}'.format(opt.saveDIR))
 
@@ -539,8 +555,8 @@ if __name__ == '__main__':
                 parent = 'single'  # parent selection method: 'single' or 'weighted'
                 x = np.loadtxt('evolve.txt', ndmin=2)
                 n = min(5, len(x))  # number of previous results to consider
-                x = x[np.argsort(-fitness(x))][:n]  # top n mutations
-                w = fitness(x) - fitness(x).min()  # weights
+                x = x[np.argsort(-utils.fitness(x))][:n]  # top n mutations
+                w = utils.fitness(x) - utils.fitness(x).min()  # weights
                 if parent == 'single' or len(x) == 1:
                     # x = x[random.randint(0, n - 1)]  # random selection
                     x = x[random.choices(range(n), weights=w)[0]]  # weighted selection

@@ -25,6 +25,17 @@ class Concat(nn.Module):
         return torch.cat(x, self.d)
 
 
+class ChannelLinear(nn.Module):
+    def __init__(self, c_in, c_out):
+        super(ChannelLinear, self).__init__()
+        self.fc = nn.Linear(c_in, c_out)
+    def forward(self, x):
+        # x with shape: [batch_size, c_in, w, h]
+        # RETURN shape [batch_size,c_out, w, h]
+        x = x.permute(0, 2, 3, 1)
+        x = self.fc(x)
+        return x.permute(0, 3, 1, 2)
+
 class FeatureConcat(nn.Module):
     def __init__(self, layers):
         super(FeatureConcat, self).__init__()

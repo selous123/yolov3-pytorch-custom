@@ -57,6 +57,22 @@ def create_modules(module_defs, img_size, cfg):
                 modules.add_module('DropBlock2D', DropBlock2D(drop_prob = float(mdef['probability']),
                     block_size = int(mdef['dropblock_size_abs']), nr_steps = int(mdef['nr_steps'])))
 
+        elif 'linear' in mdef['type']:
+            filters = mdef['filters'];
+            print(output_filters[-1], filters)
+            if mdef['type'] =='channellinear':
+                modules.add_module('ChannelLinear', ChannelLinear(output_filters[-1], filters))
+            else:
+                modules.add_module('Linear', nn.Linear(output_filters[-1], filters))
+
+            if mdef['activation'] == 'leaky':  # activation study https://github.com/ultralytics/yolov3/issues/441
+                modules.add_module('activation', nn.LeakyReLU(0.1, inplace=True))
+            elif mdef['activation'] == 'swish':
+                modules.add_module('activation', Swish())
+            elif mdef['activation'] == 'mish':
+                modules.add_module('activation', Mish())
+
+
         elif mdef['type'] == 'BatchNorm2d':
             filters = output_filters[-1]
             modules = nn.BatchNorm2d(filters, momentum=0.03, eps=1E-4)
@@ -86,7 +102,6 @@ def create_modules(module_defs, img_size, cfg):
             if mdef['dropblock']:
                 modules = DropBlock2D(drop_prob = float(mdef['probability']),
                     block_size = int(mdef['dropblock_size_abs']), nr_steps = int(mdef['nr_steps']))
-        # , nr_steps = int(mdef['nr_steps'])
 
         elif mdef['type'] == 'route':  # nn.Sequential() placeholder for 'route' layer
             layers = mdef['layers']

@@ -420,8 +420,8 @@ class LoadImagesAndLabels(Dataset):  # for training/testing
         #if self.augment and random.random()<0.5:
         if self.augment and random.random()<0.4:
             self.mosaic = True
-        # else:
-        #     self.mosaic = False
+        else:
+            self.mosaic = False
 
         if self.mosaic:
             # Load mosaic

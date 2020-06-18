@@ -8,3 +8,7 @@ python3 train.py --cfg cfg/yolov3-spp-44.cfg --data data/rubbish.data --weights 
 ## train baseline with more dropblocks.
 python3 train.py --cfg cfg/yolov3-spp-44-mdb.cfg --data data/rubbish.data --weights weights/yolov3-sppu.pt --batch-size 4 --epochs 120 --save baseline-stitcher-dropblock2
 
+
+## generate submit file
+python gen_submit_dir.py -m trained_models/baseline-all_coco -s submit/baseline-all_coco
+

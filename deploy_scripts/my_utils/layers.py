@@ -1,7 +1,7 @@
 import torch.nn.functional as F
 
 from my_utils.utils import *
-
+from my_utils.regularization_layers import *
 
 def make_divisible(v, divisor):
     # Function ensures all layers have a channel number that is divisible by 8
@@ -25,6 +25,17 @@ class Concat(nn.Module):
         return torch.cat(x, self.d)
 
 
+class ChannelLinear(nn.Module):
+    def __init__(self, c_in, c_out):
+        super(ChannelLinear, self).__init__()
+        self.fc = nn.Linear(c_in, c_out)
+    def forward(self, x):
+        # x with shape: [batch_size, c_in, w, h]
+        # RETURN shape [batch_size,c_out, w, h]
+        x = x.permute(0, 2, 3, 1)
+        x = self.fc(x)
+        return x.permute(0, 3, 1, 2)
+
 class FeatureConcat(nn.Module):
     def __init__(self, layers):
         super(FeatureConcat, self).__init__()
@@ -36,7 +47,7 @@ class FeatureConcat(nn.Module):
 
 
 class WeightedFeatureFusion(nn.Module):  # weighted sum of 2 or more layers https://arxiv.org/abs/1911.09070
-    def __init__(self, layers, weight=False):
+    def __init__(self, layers, weight=False, dropblock=False, params=None):
         super(WeightedFeatureFusion, self).__init__()
         self.layers = layers  # layer indices
         self.weight = weight  # apply weights boolean
@@ -44,12 +55,20 @@ class WeightedFeatureFusion(nn.Module):  # weighted sum of 2 or more layers http
         if weight:
             self.w = nn.Parameter(torch.zeros(self.n), requires_grad=True)  # layer weights
 
+        self.dropblock = dropblock
+
+        if self.dropblock:
+            self.dropblock1 = DropBlock2D(**params)
+            self.dropblock2 = DropBlock2D(**params)
+
     def forward(self, x, outputs):
         # Weights
         if self.weight:
             w = torch.sigmoid(self.w) * (2 / self.n)  # sigmoid weights (0-1)
             x = x * w[0]
 
+        if self.dropblock:
+            x = self.dropblock1(x)
         # Fusion
         nx = x.shape[1]  # input channels
         for i in range(self.n - 1):
@@ -63,6 +82,8 @@ class WeightedFeatureFusion(nn.Module):  # weighted sum of 2 or more layers http
                 x[:, :na] = x[:, :na] + a  # or a = nn.ZeroPad2d((0, 0, 0, 0, 0, dc))(a); x = x + a
             else:  # slice feature
                 x = x + a[:, :nx]
+        if self.dropblock:
+            x = self.dropblock2(x)
 
         return x
 

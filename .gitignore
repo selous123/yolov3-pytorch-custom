@@ -17,6 +17,7 @@ pre-trained_weights/
 ## all image file
 *.jpg
 *.png
+
 ## other git repo
 /code/detectron2_repo
 /code/faster-rcnn-repo
@@ -28,3 +29,10 @@ pre-trained_weights/
 ## python tmp file
 **/.ipynb_checkpoints/
 *.pyc
+
+## dir file
+/submit*
+
+
+## re-include
+!**/asserts/*.jpg

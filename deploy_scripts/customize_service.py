@@ -4,11 +4,15 @@ import codecs
 from collections import OrderedDict
 from models import *
 from my_utils.utils import *
-from my_utils import torch_utils
 from PIL import Image
 from torchvision import transforms as transforms
-
+# from my_utils.datasets import *
 import time
+import glob
+import cv2
+import io
+import numpy as np
+
 
 import log
 logger = log.getLogger(__name__)
@@ -18,16 +22,22 @@ from model_service.pytorch_model_service import PTServingBaseService
 class ObjectDetectionService(PTServingBaseService):
     def __init__(self, model_name, model_path):
         # make sure these files exist
+        ## 绝对路径，而且通过glob搜索
         self.model_name = model_name
-        self.model_path = os.path.join(os.path.dirname(__file__), 'best.pkl')
-        self.classes_path = os.path.join(os.path.dirname(__file__), 'train_classes.txt')
-        self.model_def = os.path.join(os.path.dirname(__file__), 'model.cfg')
-        self.label_map = parse_classify_rule(os.path.join(os.path.dirname(__file__), 'classify_rule.json'))
+        self.model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best.pkl')
+        self.classes_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'train_classes.txt')
+        self.model_def = glob.glob(os.path.join(os.path.dirname(os.path.abspath(__file__)), '*.cfg'))[0]
+        print(self.model_def)
+        #self.model_def = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'csdarknet53s-panet-spp.cfg')
+        self.label_map = parse_classify_rule(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'classify_rule.json'))
+
+        self.rect = True
+        self.augment = True
 
         self.input_image_key = 'images'
-        self.score = 0.3
-        self.iou = 0.45
-        self.img_size = 416
+        self.score = 0.001
+        self.iou = 0.6
+        self.img_size = 512
         self.classes = self._get_class()
         # define and load YOLOv3 model
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -53,6 +63,29 @@ class ObjectDetectionService(PTServingBaseService):
         class_names = [c.strip() for c in class_names]
         return class_names
 
+    def _preprocess_rect(self,data):
+        preprocessed_data = {}
+        for k, v in data.items():
+            for file_name, file_content in v.items():
+                ## READ Image, BGR 0-255
+                img0 = cv2.imdecode(np.frombuffer(file_content.read(),np.uint8),1)
+                shape = img0.shape[:2]
+
+                ## RESIZE and PADDING Image
+                img = letterbox(img0, new_shape=self.img_size)[0]
+
+                # Convert IMAGE
+                img = img[:, :, ::-1]  # BGR to RGB, to 3x416x416
+                img = np.ascontiguousarray(img)
+                img = transforms.ToTensor()(img) # 3 * 320 * 512
+
+                ## input img shape
+                self.input_size = img.shape[1:]
+                img = img.unsqueeze(0)
+                #print(img.shape)
+                preprocessed_data[k] = [img, shape]
+        return preprocessed_data
+
     def _preprocess(self, data):
         preprocessed_data = {}
         for k, v in data.items():
@@ -65,7 +98,7 @@ class ObjectDetectionService(PTServingBaseService):
                 # Pad to square resolution
                 img, _ = pad_to_square(img, 0)
                 # Resize
-                img = resize(img, 416)
+                img = resize(img, self.img_size)
                 # unsqueeze
                 img = img.unsqueeze(0)
 
@@ -81,19 +114,22 @@ class ObjectDetectionService(PTServingBaseService):
 
         Tensor = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor
         input_imgs = img.type(Tensor)
-
         # Get detections
         with torch.no_grad():
-            detections = self.model(input_imgs)[0]
+            detections = self.model(input_imgs, augment=self.augment)[0]
             detections = non_max_suppression(detections, self.score, self.iou)
 
         result = OrderedDict()
         if detections is not None:
-            detections = rescale_boxes(detections[0], self.img_size, shape)
+            ## 2. resize rec pboxs
+            if self.rect:
+                detections = rescale_boxes_rect(detections[0], self.input_size, shape)
+            else:
+                detections = rescale_boxes(detections[0], self.img_size, shape)
             detections = detections.cpu() if torch.cuda.is_available() else detections
             detections = detections.numpy().tolist()
-            out_classes = [x[6] for x in detections]
-            out_scores = [x[5] for x in detections]
+            out_classes = [x[5] for x in detections]
+            out_scores = [x[4] for x in detections]
             out_boxes = [x[:4] for x in detections]
 
             detection_class_names = []
@@ -132,7 +168,11 @@ class ObjectDetectionService(PTServingBaseService):
             data to be sent back
         '''
         pre_start_time = time.time()
-        data = self._preprocess(data)
+        ## 1. 处理成长方形
+        if self.rect:
+            data = self._preprocess_rect(data)
+        else:
+            data = self._preprocess(data)
         infer_start_time = time.time()
         # Update preprocess latency metric
         pre_time_in_ms = (infer_start_time - pre_start_time) * 1000
@@ -178,9 +218,17 @@ if __name__ == '__main__':
     ODS = ObjectDetectionService('yolov3','hello')
     data = dict()
     item = dict()
-    item['filename'] = '/home/lrh/program/git/object_detection/code/yolov3/asserts/img_17247.jpg'
+    filename = '/home/lrh/program/git/object_detection/code/yolov3/asserts/img_17247.jpg'
+    with open(filename, 'rb') as f:
+        a = f.read()
+    byte_stream = io.BytesIO(a)
+    item['filename'] = byte_stream
+
     data['images'] = item
-    data = ODS._preprocess(data)
+    if ODS.rect:
+        data = ODS._preprocess_rect(data)
+    else:
+        data = ODS._preprocess(data)
     data = ODS._inference(data)
     output = ODS._postprocess(data)
     print(output)

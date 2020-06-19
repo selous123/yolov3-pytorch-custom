@@ -167,5 +167,5 @@ def build_targets(p, targets, model):
             assert c.max() < model.nc, 'Model accepts %g classes labeled from 0-%g, however you labelled a class %g. ' \
                                        'See https://github.com/ultralytics/yolov3/wiki/Train-Custom-Data' % (
                                            model.nc, model.nc - 1, c.max())
-
+        exit(0)
     return tcls, tbox, indices, anch
